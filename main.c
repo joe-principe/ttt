@@ -2,12 +2,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-enum marks {
-    MARK_EMPTY = ' ',
-    MARK_X = 'X',
-    MARK_O = 'O'
-};
-
 enum gamemodes {
     MODE_LOCAL_CPU = 0,
     MODE_LOCAL_PVP = 1,
@@ -75,6 +69,7 @@ main(void)
                 init_game(opt);
                 should_continue = false;
                 delwin(mode_win);
+                mode_win = NULL;
                 clear();
                 break;
             default:
@@ -86,7 +81,7 @@ main(void)
     board_win = newwin(11, 13, 3, 0);
     wrefresh(board_win);
     keypad(board_win, true);
-    curs_set(2);
+    curs_set(1);
 
     /* Replace true with something */
     while (true) {
@@ -109,7 +104,7 @@ main(void)
 
         for (i = 0; i < 9; i++) {
             if (i == highlight) { wattron(mode_win, A_REVERSE); }
-            mvwprintw(board_win, 1 + 4 * (i / 3), 3 + 4 * (i % 3), "%c",
+            mvwprintw(board_win, 1 + 3 * (i / 3), 3 + 4 * (i % 3), "%c",
                       board[i]);
             wattroff(board_win, A_REVERSE);
         } /* for */
@@ -134,6 +129,7 @@ main(void)
                 break;
             case 10:
                 place_piece(curr_player, board, highlight);
+                curr_player = curr_player % 2 == 1 ? 2 : 1;
                 break;
             default:
                 break;
