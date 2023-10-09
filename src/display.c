@@ -1,4 +1,5 @@
 #include "../include/display.h"
+#include "../include/game.h"
 
 /* Initializes the ncurses stuff */
 void
@@ -9,6 +10,44 @@ init_ncurses(void)
     cbreak();
     refresh();
     curs_set(0);
+}
+
+/* Prints out the selection window */
+void
+print_menu(WINDOW *win, const char **text, int num_opts, int highlight)
+{
+    int i;
+
+    for (i = 1; i < num_opts; i++) {
+        if (i == highlight) { attron(A_STANDOUT); }
+        mvwprintw(win, i, 1, "%s", text[i - 1]);
+        attroff(A_STANDOUT);
+    } /* for */
+}
+
+void 
+navigate_menu(void (*funcp)(game *, int), game *g, int key, int num_opts,
+              int *highlight)
+{
+    switch (key) {
+        case KEY_UP:
+        case KEY_LEFT:
+        case 'k':
+            *highlight -= 1;
+            if (*highlight < 1) { *highlight = num_opts; }
+            break;
+        case KEY_DOWN:
+        case KEY_RIGHT:
+        case 'j':
+            *highlight += 1;
+            if (*highlight > num_opts) { *highlight = 1; }
+            break;
+        case 10:
+            funcp(g, *highlight);
+            break;
+        default:
+            break;
+    } /* switch */
 }
 
 /* Prints the board to the window */

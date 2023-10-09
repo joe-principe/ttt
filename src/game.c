@@ -1,14 +1,7 @@
-#include <ncurses.h>
 #include <stdlib.h>
 
+#include "../include/display.h"
 #include "../include/game.h"
-
-const char *gamemodes_str[] = {
-    "Player vs. CPU",
-    "Player vs. Player (Local)",
-    "Player vs. Player (Remote)",
-    "Quit"
-};
 
 void
 init_game(game *game)
@@ -21,27 +14,18 @@ init_game(game *game)
     for (i = 0; i < 9; i++) { game->board[i] = ' '; }
 }
 
-/* This should do some sort of setting up for the game modes */
-void
-set_mode(int mode)
-{
-    switch (mode) {
-        case MODE_LOCAL_CPU:
-        case MODE_LOCAL_PVP:
-        case MODE_REMOTE_PVP:
-            return;
-        case MODE_QUIT:
-            endwin();
-            exit(EXIT_SUCCESS);
-    } /* switch */
-}
-
 void 
-select_mode(void)
+select_mode(game *g)
 {
     WINDOW *mode_win;
-    int i, mode_hi = 0, action = 0;
+    int mode_hi, key;
     bool should_continue = true;
+    const char *gamemodes_str[] = {
+        "Player vs. CPU",
+        "Player vs. Player (Local)",
+        "Player vs. Player (Remote)",
+        "Quit"
+    };
 
     /* Setup the gamemode selection window */
     mode_win = newwin(6, 28, 3, 0);
@@ -55,60 +39,158 @@ select_mode(void)
 
     /* Choose game mode and start game */
     while (should_continue) {
-        for (i = 0; i < 4; i++) {
-            if (i == mode_hi) { wattron(mode_win, A_STANDOUT); }
-            mvwprintw(mode_win, i + 1, 1, "%s", gamemodes_str[i]);
-            wattroff(mode_win, A_STANDOUT);
+        print_menu(mode_win, gamemodes_str, 4, mode_hi);
+        key = wgetch(mode_win);
+        if (key == 10) {
+            delwin(mode_win);
+            mode_win = NULL;
+            clear();
+            should_continue = false;
+        } /* if */
+        navigate_menu(set_mode, g, key, 4, &mode_hi);
+    } /* while */
+}
+
+/* This should do some sort of setting up for the game modes */
+void
+set_mode(game *game, int mode)
+{
+    game->mode = mode;
+
+    switch (mode) {
+        case MODE_LOCAL_CPU:
+            configure_cpu(game);
+            break;
+        case MODE_LOCAL_PVP:
+            break;
+        case MODE_REMOTE_PVP:
+            configure_remote();
+            break;
+        case MODE_QUIT:
+            endwin();
+            exit(EXIT_SUCCESS);
+    } /* switch */
+}
+
+/* Sets up the computer opponent for local CPU games */
+void
+configure_cpu(game *g)
+{
+    int key, p1_hi = 1;
+    WINDOW *sel_win = newwin(4, 8, 2, 0);
+    const char *players[] = {
+        "Player",
+        "Computer"
+    };
+
+    box(sel_win, 0, 0);
+    wrefresh(sel_win);
+    keypad(sel_win, true);
+
+    printw("Choose who will be player 1 (X)");
+    refresh();
+
+    while (true) {
+        print_menu(sel_win, players, 2, p1_hi);
+        key = wgetch(sel_win);
+        navigate_menu(set_local_player, g, key, 2, &p1_hi);
+    } /* while */
+}
+
+void
+set_local_player(game *g, int player_num)
+{
+    g->local_player = player_num == 1 ? 1 : 2;
+}
+
+/* This is the main loop of the game */
+void some_function(game *g)
+{
+    int i = 0, pos_hi = 0, status = -1, action;
+    WINDOW *board_win = newwin(11, 13, 3, 0);
+
+    wrefresh(board_win);
+    keypad(board_win, true);
+
+    while (status == -1) {
+        mvprintw(0, 0, "Player %d's turn (turn %d):", g->curr_player, g->turn);
+        mvprintw(1, 0, "Press ENTER to select a square");
+        refresh();
+
+        print_board(board_win, g->board);
+
+        for (i = 0; i < 9; i++) {
+            if (i == pos_hi) { wattron(board_win, A_STANDOUT); }
+            mvwprintw(board_win, 1 + 3 * (i / 3), 3 + 4 * (i % 3), "%c",
+                      g->board[i]);
+            wattroff(board_win, A_STANDOUT);
         } /* for */
-        action = wgetch(mode_win);
+        action = wgetch(board_win);
 
         switch (action) {
             case KEY_UP:
-            case KEY_LEFT:
-            case 'k':
-                mode_hi--;
-                if (mode_hi == -1) { mode_hi = 3; }
+                pos_hi -= 3;
+                if (pos_hi < 0) { pos_hi += 9; }
                 break;
             case KEY_DOWN:
-            case KEY_RIGHT:
-            case 'j':
-                mode_hi++;
-                if (mode_hi == 4) { mode_hi = 0; }
+                pos_hi += 3;
+                if (pos_hi > 8) { pos_hi -= 9; }
                 break;
-            /* TODO: Figure out why 10 != KEY_ENTER */
+            case KEY_LEFT:
+                pos_hi--;
+                if (pos_hi == -1) { pos_hi = 8; }
+                break;
+            case KEY_RIGHT:
+                pos_hi++;
+                if (pos_hi == 9) { pos_hi = 0; }
+                break;
             case 10:
-                delwin(mode_win);
-                mode_win = NULL;
-                clear();
-                set_mode(mode_hi);
-                should_continue = false;
+                place_piece(g->board, pos_hi, g->curr_player);
+                g->curr_player = g->curr_player == 1 ? 2 : 1;
+                g->turn++;
                 break;
             default:
                 break;
         } /* switch */
+
+        /* Check for victory */
+        /* Can only win after the 6th turn, hence the check */
+        if (g->turn >= 6) { status = check_for_win(g->board, g->turn); }
     } /* while */
+
+    print_board(board_win, g->board);
+    switch (status) {
+        case 0:
+            mvprintw(15, 0, "The game is a tie!");
+            break;
+        case 1:
+            mvprintw(15, 0, "Player 1 (X) wins!");
+            break;
+        case 2:
+            mvprintw(15, 0, "Player 2 (O) wins");
+            break;
+        default:
+            break;
+    } /* switch */
 }
 
 /* Places a piece and increments the turn counter
  * If the current space is occupied, do nothing */
 void
-place_piece(char *board, int pos, int *player, int *turn)
+place_piece(char *board, int pos, int player)
 {
     if (board[pos] != ' ') { return; }
 
-    switch (*player) {
+    switch (player) {
         case 1:
             board[pos] = 'X';
-            *player = 2;
             break;
         case 2:
             board[pos] = 'O';
-            *player = 1;
             break;
         default:
             break;
     } /* switch */
-    *turn += 1;
 }
 
 /* Checks the status of the board */
