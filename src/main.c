@@ -6,7 +6,6 @@
 int
 main(void)
 {
-    WINDOW *board_win;
     game g;
 
     /* Initialization stuff */
@@ -14,15 +13,13 @@ main(void)
     init_game(&g);
 
     select_mode(&g);
-    some_function(&g);
+    game_loop(&g);
 
     /* This prints below the board, hence 16 */
     mvprintw(16, 0, "Thanks for playing! Press any key to exit.");
     refresh();
     getch();
 
-    delwin(board_win);
-    board_win = NULL;
     endwin();
     return 0;
 }

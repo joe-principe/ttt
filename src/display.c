@@ -18,7 +18,7 @@ print_menu(WINDOW *win, const char **text, int num_opts, int highlight)
 {
     int i;
 
-    for (i = 1; i < num_opts; i++) {
+    for (i = 1; i <= num_opts; i++) {
         if (i == highlight) { attron(A_STANDOUT); }
         mvwprintw(win, i, 1, "%s", text[i - 1]);
         attroff(A_STANDOUT);
