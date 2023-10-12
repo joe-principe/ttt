@@ -8,7 +8,7 @@ typedef int (*player_move_func_def)(const char *, int);
 
 struct game_t
 {
-    player_move_func_def player_move_funcp[2];
+    player_move_func_def player_move_funcptr[2];
     int players[2];
     int cur_player;
     int turn;
@@ -34,44 +34,152 @@ enum bot_difficulty {
 
 const char marks[3] = { ' ', 'X', 'O' };
 
+/**
+ * Initializes ncurses
+ */
 void init_ncurses(void);
 
+/**
+ * Initializes the game struct
+ * @param g The game struct
+ */
 void init_game(game *g);
 
+/**
+ * Sets the player types
+ * @param g The game struct containing the players
+ */
 void set_players(game *g);
 
+/**
+ * Sets the player move function pointers
+ * @param g The game struct containing the function pointers
+ */
 void set_player_moves(game *g);
 
+/**
+ * Gets a move from a local player
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the player's move
+ */
 int get_local_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a remote player
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the player's move
+ */
 int get_remote_move(const char *board, int cur_player);
 
+/**
+ * Establishes a connection to a remote player
+ */
 void establish_connection(void);
 
+/**
+ * Sets the difficulty level of a computer opponent
+ * @return A pointer to the move function of the corresponding bot difficulty
+ */
 player_move_func_def set_bot_difficulty(void);
 
+/**
+ * Gets a move from an easy bot (places pieces randomly)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_easy_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a medium bot (places pieces randomly unless winning move is
+ * available)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_medium_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (applies the minimax algorithm without any
+ * enhancements)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_minimax_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (uses modified minimax to sometimes trick
+ * opponent if possible)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_tricky_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (uses minimax with caching)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_cache_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (uses minimax with better caching for when
+ * multiple boards are the same state (ie, rotationally equivalent))
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_fastcache_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (uses fastcache with alpha beta pruning)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_ab_pruning_bot_move(const char *board, int cur_player);
 
+/**
+ * Gets a move from a hard bot (looks up moves from a cache file)
+ * @param board The tic-tac-toe board
+ * @param cur_player The player whose turn it is
+ * @return The position of the bot's move
+ */
 int get_precache_bot_move(const char *board, int cur_player);
 
+/**
+ * Performs the main game loop of drawing the board, getting a move, placing a
+ * mark, then switching players
+ * @param g The game struct
+ * @return The final result of the game. 0 for tie, 1/2 for player 1/2 winning
+ */
 int game_loop(game *g);
 
+/**
+ * Prints the current state of the board
+ * @param win The window on which to print the board
+ * @param board The tic-tac-toe board
+ */
 void print_board(WINDOW *win, const char *board);
 
+/**
+ * Checks the current state of the board for termination.
+ * @param board The tic-tac-toe board
+ * @param cur_player The player who just moved
+ * @return The termination state of the game. -1 if the game should continue, 0
+ * if the game is tied, 1/2 if player 1/2 won
+ */
 int check_for_win(const char *board, int cur_player);
 
+/**
+ * Prints the results of the game
+ * @param result The final result of the game
+ */
 void print_results(int result);
 
 int
@@ -95,6 +203,7 @@ main(void)
     return 0;
 }
 
+/* Initializes ncurses */
 void
 init_ncurses(void)
 {
@@ -105,6 +214,7 @@ init_ncurses(void)
     curs_set(0);
 }
 
+/* Initializes the game struct */
 void
 init_game(game *g)
 {
@@ -113,6 +223,7 @@ init_game(game *g)
     memset(g->board, ' ', 9);
 }
 
+/* Sets the player types */
 void
 set_players(game *g)
 {
@@ -170,6 +281,7 @@ set_players(game *g)
     clear();
 }
 
+/* Sets the player move function pointers */
 void 
 set_player_moves(game *g)
 {
@@ -178,14 +290,14 @@ set_player_moves(game *g)
     for (i = 0; i < 2; i++) {
         switch (g->players[i]) {
             case PLAYER_LOCAL:
-                g->player_move_funcp[i] = get_local_move;
+                g->player_move_funcptr[i] = get_local_move;
                 break;
             case PLAYER_REMOTE:
-                g->player_move_funcp[i] = get_remote_move;
+                g->player_move_funcptr[i] = get_remote_move;
                 establish_connection();
                 break;
             case PLAYER_COMPUTER:
-                g->player_move_funcp[i] = set_bot_difficulty();
+                g->player_move_funcptr[i] = set_bot_difficulty();
                 break;
             default:
                 break;
@@ -193,6 +305,7 @@ set_player_moves(game *g)
     } /* for */
 }
 
+/* Gets a move from a local player */
 int
 get_local_move(const char *board, int cur_player)
 {
@@ -246,12 +359,15 @@ get_local_move(const char *board, int cur_player)
     return pos;
 }
 
+/* Gets a move from a remote player */
 int
 get_remote_move(const char *board, int cur_player);
 
+/* Establishes a connection to a remote player */
 void 
 establish_connection(void);
 
+/* Sets the difficulty level of a computer opponent */
 player_move_func_def
 set_bot_difficulty(void)
 {
@@ -317,6 +433,7 @@ set_bot_difficulty(void)
     return diff_mode;
 }
 
+/* Gets a move from an easy bot (places pieces randomly) */
 int 
 get_easy_bot_move(const char *board, int cur_player)
 {
@@ -351,6 +468,8 @@ get_easy_bot_move(const char *board, int cur_player)
     return pos;
 }
 
+/* Gets a move from a medium bot (places pieces randomly unless winning move is
+ * available) */
 int 
 get_medium_bot_move(const char *board, int cur_player)
 {
@@ -391,24 +510,36 @@ get_medium_bot_move(const char *board, int cur_player)
     return get_easy_bot_move(board, cur_player);
 }
 
+/* Gets a move from a hard bot (applies the minimax algorithm without any
+ * enhancements) */
 int 
 get_minimax_bot_move(const char *board, int cur_player);
 
+/* Gets a move from a hard bot (uses modified minimax to sometimes trick
+ * opponent if possible) */
 int 
 get_tricky_bot_move(const char *board, int cur_player);
 
+/* Gets a move from a hard bot (uses minimax with caching)
+ * @param board The tic-tac-toe board */
 int 
 get_cache_bot_move(const char *board, int cur_player);
 
+/* Gets a move from a hard bot (uses minimax with better caching for when
+ * multiple boards are the same state (ie, rotationally equivalent)) */
 int 
 get_fastcache_bot_move(const char *board, int cur_player);
 
+/* Gets a move from a hard bot (uses fastcache with alpha beta pruning) */
 int 
 get_ab_pruning_bot_move(const char *board, int cur_player);
 
+/* Gets a move from a hard bot (looks up moves from a cache file) */
 int 
 get_precache_bot_move(const char *board, int cur_player);
 
+/* Performs the main game loop of drawing the board, getting a move, placing a
+ * mark, then switching players */
 int 
 game_loop(game *g)
 {
@@ -426,7 +557,8 @@ game_loop(game *g)
 
         print_board(board_win, g->board);
 
-        pos = (*g->player_move_funcp[g->cur_player])(g->board, g->cur_player);
+        pos = (*g->player_move_funcptr[g->cur_player - 1])(g->board,
+                                                           g->cur_player);
         g->board[pos] = marks[g->cur_player];
         g->cur_player = g->cur_player == 1 ? 2 : 1;
         g->turn++;
@@ -434,13 +566,14 @@ game_loop(game *g)
         /* Check for victory */
         /* Can only win after the 6th turn, hence the check */
         if (g->turn >= 6) { status = check_for_win(g->board, g->turn); }
-    } // while
+    } /* while */
 
     print_board(board_win, g->board);
 
     return status;
 }
 
+/* Prints the current state of the board */
 void 
 print_board(WINDOW *win, const char *board)
 {
@@ -457,6 +590,7 @@ print_board(WINDOW *win, const char *board)
     wrefresh(win);
 }
 
+/* Checks the current state of the board for termination. */
 int 
 check_for_win(const char *board, int turn)
 {
@@ -494,6 +628,7 @@ check_for_win(const char *board, int turn)
     return -1;
 }
 
+/* Prints the results of the game */
 void
 print_results(int result)
 {
