@@ -529,7 +529,7 @@ get_medium_bot_move(const char *board, int cur_player)
 int 
 get_minimax_bot_move(const char *board, int cur_player)
 {
-    int i, best_pos, score, best_score = 0, num_empty, opponent;
+    int i, best_pos, score, best_score = -1, num_empty, opponent;
     int legal_moves[9];
     char mark = cur_player == 1 ? 'X' : 'O';
     char new_board[9];
@@ -537,6 +537,8 @@ get_minimax_bot_move(const char *board, int cur_player)
     for (i = 0; i < 9; i++) { new_board[i] = board[i]; }
 
     num_empty = get_legal_moves(board, legal_moves);
+
+    if (num_empty == 9) { return 4; }
 
     for (i = 0; i < num_empty; i++) {
         new_board[legal_moves[i]] = mark;
@@ -555,7 +557,7 @@ int
 minimax_score(const char *board, int opponent, int cur_player)
 {
     int i, num_empty, status, max_score = 0, min_score = 0, score = 0;
-    int legal_moves[9], scores[9];
+    int legal_moves[9];
     char mark = cur_player == 1 ? 'X' : 'O';
     char new_board[9];
     
@@ -577,7 +579,6 @@ minimax_score(const char *board, int opponent, int cur_player)
         score = minimax_score(new_board, opponent, cur_player);
         if (score > max_score) { max_score = score; }
         if (score < min_score) { min_score = score; }
-        scores[i] = score;
     } /* for */
 
     if (cur_player == opponent) { return max_score; }
@@ -654,6 +655,10 @@ game_loop(game *g)
         pos = (*g->player_move_funcptr[g->cur_player - 1])(g->board,
                                                            g->cur_player);
         g->board[pos] = marks[g->cur_player];
+
+        /* Sleep for a second after bot moves so that the user can see moves
+         * being made. Otherwise, the game just appears finished instantly and
+         * is boring */
         if (g->players[g->cur_player - 1] == PLAYER_COMPUTER) {
 #ifdef _WIN32
             Sleep(1000);
