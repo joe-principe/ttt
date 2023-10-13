@@ -3,6 +3,12 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <unistd.h>
+#endif
+
 typedef struct game_t game;
 typedef int (*player_move_func_def)(const char *, int);
 
@@ -80,9 +86,10 @@ void establish_connection(void);
 
 /**
  * Sets the difficulty level of a computer opponent
+ * @param player The player number of the bot (either 1 or 2)
  * @return A pointer to the move function of the corresponding bot difficulty
  */
-player_move_func_def set_bot_difficulty(void);
+player_move_func_def set_bot_difficulty(int player);
 
 /**
  * Gets a move from an easy bot (places pieces randomly)
@@ -109,6 +116,20 @@ int get_medium_bot_move(const char *board, int cur_player);
  * @return The position of the bot's move
  */
 int get_minimax_bot_move(const char *board, int cur_player);
+
+/* TODO: Enter the description of this function */
+int minimax_score(const char *board, int opponent, int cur_player);
+
+/**
+ * Gets all of the legal moves on the board.
+ * @note The legal moves array contains the positions of legal moves followed by
+ * -1 until the end. eg, only one legal move would be [pos, -1, ..., -1]
+ * @param board The tic-tac-toe board
+ * @param legal_moves An array of the positions of legal moves. Passed in as an
+ * out value. Illegal moves are -1, which the board is initialized to
+ * @return The number of legal moves for the board
+ */
+int get_legal_moves(const char *board, int *legal_moves);
 
 /**
  * Gets a move from a hard bot (uses modified minimax to sometimes trick
@@ -165,7 +186,7 @@ int game_loop(game *g);
  * @param win The window on which to print the board
  * @param board The tic-tac-toe board
  */
-void print_board(WINDOW *win, const char *board);
+void print_board(const char *board);
 
 /**
  * Checks the current state of the board for termination.
@@ -212,6 +233,7 @@ init_ncurses(void)
     cbreak();
     refresh();
     curs_set(0);
+    keypad(stdscr, true);
 }
 
 /* Initializes the game struct */
@@ -242,6 +264,7 @@ set_players(game *g)
     keypad(player_select_win, true);
 
     for (player = 1; player < 3; player++) {
+        should_continue = true;
         mvprintw(1, 0, "Choose player %d (%c):", player, marks[player]);
         refresh();
 
@@ -267,7 +290,7 @@ set_players(game *g)
                     if (highlight > num_opts) { highlight = 1; }
                     break;
                 case 10:
-                    g->players[player - 1] = highlight;
+                    g->players[player - 1] = highlight - 1;
                     should_continue = false;
                     break;
                 default:
@@ -279,6 +302,7 @@ set_players(game *g)
     delwin(player_select_win);
     player_select_win = NULL;
     clear();
+    refresh();
 }
 
 /* Sets the player move function pointers */
@@ -297,7 +321,7 @@ set_player_moves(game *g)
                 establish_connection();
                 break;
             case PLAYER_COMPUTER:
-                g->player_move_funcptr[i] = set_bot_difficulty();
+                g->player_move_funcptr[i] = set_bot_difficulty(i + 1);
                 break;
             default:
                 break;
@@ -312,16 +336,13 @@ get_local_move(const char *board, int cur_player)
     int i, pos, key, pos_hi = 0;
     bool should_continue = true;
 
-    /* Unfortunately, since I can't pass in the board window, I just highlight
-     * on stdscr. This works just fine, but it doesn't have the nice separation
-     * I get from using board_win
-     * Also, I'm not actually sure if this'll work, so hope for the best */
     while (should_continue) {
         for (i = 0; i < 9; i++) {
             if (i == pos_hi) { attron(A_STANDOUT); }
             mvprintw(3 + 3 * (i / 3), 3 + 4 * (i % 3), "%c", board[i]);
             attroff(A_STANDOUT);
         } /* for */
+        refresh();
         key = getch();
 
         switch (key) {
@@ -361,15 +382,21 @@ get_local_move(const char *board, int cur_player)
 
 /* Gets a move from a remote player */
 int
-get_remote_move(const char *board, int cur_player);
+get_remote_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Establishes a connection to a remote player */
 void 
-establish_connection(void);
+establish_connection(void)
+{
+    return;
+}
 
 /* Sets the difficulty level of a computer opponent */
 player_move_func_def
-set_bot_difficulty(void)
+set_bot_difficulty(int player)
 {
     int i, key, diff_hi = 0, num_opts = 8, widest_str_len = 36;
     bool should_continue = true;
@@ -401,7 +428,8 @@ set_bot_difficulty(void)
     wrefresh(diff_win);
     keypad(diff_win, true);
 
-    mvprintw(0, 0, "Choose bot difficulty:" );
+    mvprintw(0, 0, "Choose player %d bot difficulty:", player );
+    refresh();
 
     while (should_continue) {
         for (i = 0; i < num_opts; i++) {
@@ -409,6 +437,7 @@ set_bot_difficulty(void)
             mvwprintw(diff_win, i + 1, 1, "%s", difficulty_options[i]);
             wattroff(diff_win, A_STANDOUT);
         } /* for */
+        wrefresh(diff_win);
         key = wgetch(diff_win);
 
         switch (key) {
@@ -424,11 +453,17 @@ set_bot_difficulty(void)
                 break;
             case 10:
                 diff_mode = bot_move_funcs[diff_hi];
+                should_continue = false;
                 break;
             default:
                 break;
         } /* switch */
     } /* while */
+
+    delwin(diff_win);
+    diff_win = NULL;
+    clear();
+    refresh();
 
     return diff_mode;
 }
@@ -437,33 +472,12 @@ set_bot_difficulty(void)
 int 
 get_easy_bot_move(const char *board, int cur_player)
 {
-    int i, j, pos, num_empty = 0;
-    int *empty_pos;
+    int pos, num_empty = 0;
+    int empty_pos[9];
 
-    for (i = 0; i < 9; i++) {
-        if (board[i] == ' ') { num_empty++; }
-    } /* for */
-
-    empty_pos = malloc(sizeof(int) * num_empty);
-
-    if (empty_pos == NULL) {
-        fprintf(stderr, "Error: Could not allocate enough memory in file %s "
-                "@ line: %d", __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    } /* if */
-
-    j = 0;
-    for (i = 0; i < 9; i++) {
-        if (board[i] == ' ') {
-            empty_pos[j] = i;
-            j++;
-        } /* if */
-    } /* for */
+    num_empty = get_legal_moves(board, empty_pos);
 
     pos = empty_pos[rand() % num_empty];
-
-    free(empty_pos);
-    empty_pos = NULL;
 
     return pos;
 }
@@ -513,30 +527,116 @@ get_medium_bot_move(const char *board, int cur_player)
 /* Gets a move from a hard bot (applies the minimax algorithm without any
  * enhancements) */
 int 
-get_minimax_bot_move(const char *board, int cur_player);
+get_minimax_bot_move(const char *board, int cur_player)
+{
+    int i, best_pos, score, best_score = 0, num_empty, opponent;
+    int legal_moves[9];
+    char mark = cur_player == 1 ? 'X' : 'O';
+    char new_board[9];
+
+    for (i = 0; i < 9; i++) { new_board[i] = board[i]; }
+
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+        opponent = cur_player == 1 ? 2 : 1;
+        score = minimax_score(new_board, opponent, cur_player);
+        if (score > best_score) {
+            best_pos = legal_moves[i];
+            best_score = score;
+        } /* if */
+    } /* for */
+    return best_pos;
+}
+
+/* Gets the minimax score */
+int 
+minimax_score(const char *board, int opponent, int cur_player)
+{
+    int i, num_empty, status, max_score = 0, min_score = 0, score = 0;
+    int legal_moves[9], scores[9];
+    char mark = cur_player == 1 ? 'X' : 'O';
+    char new_board[9];
+    
+    for (i = 0; i < 9; i++) { new_board[i] = board[i]; }
+
+    status = check_for_win(board, cur_player);
+
+    if (status != -1) {
+        if (status == 0) { return 0; }
+        else if (status == cur_player) { return 10; }
+        else { return -10; }
+    } /* else if */
+
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+        opponent = cur_player == 1 ? 2 : 1;
+        score = minimax_score(new_board, opponent, cur_player);
+        if (score > max_score) { max_score = score; }
+        if (score < min_score) { min_score = score; }
+        scores[i] = score;
+    } /* for */
+
+    if (cur_player == opponent) { return max_score; }
+    return min_score;
+}
+
+/* Gets the current legal moves on the board */
+int
+get_legal_moves(const char *board, int *legal_moves)
+{
+    int i, j = 0;
+
+    for (i = 0; i < 9; i++) {
+        if (board[i] == ' ') {
+            legal_moves[j] = i;
+            j++;
+        } /* if */
+    } /* for */
+
+    return j;
+}
 
 /* Gets a move from a hard bot (uses modified minimax to sometimes trick
  * opponent if possible) */
 int 
-get_tricky_bot_move(const char *board, int cur_player);
+get_tricky_bot_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Gets a move from a hard bot (uses minimax with caching)
  * @param board The tic-tac-toe board */
 int 
-get_cache_bot_move(const char *board, int cur_player);
+get_cache_bot_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Gets a move from a hard bot (uses minimax with better caching for when
  * multiple boards are the same state (ie, rotationally equivalent)) */
 int 
-get_fastcache_bot_move(const char *board, int cur_player);
+get_fastcache_bot_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Gets a move from a hard bot (uses fastcache with alpha beta pruning) */
 int 
-get_ab_pruning_bot_move(const char *board, int cur_player);
+get_ab_pruning_bot_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Gets a move from a hard bot (looks up moves from a cache file) */
 int 
-get_precache_bot_move(const char *board, int cur_player);
+get_precache_bot_move(const char *board, int cur_player)
+{
+    return 0;
+}
 
 /* Performs the main game loop of drawing the board, getting a move, placing a
  * mark, then switching players */
@@ -544,50 +644,51 @@ int
 game_loop(game *g)
 {
     int pos, status = -1;
-    WINDOW *board_win;
-
-    board_win = newwin(11, 13, 3, 0);
-    wrefresh(board_win);
-    keypad(board_win, true);
 
     while (status == -1) {
-        mvprintw(0, 0, "Player %d's (%c) turn (turn %d):", g->cur_player,
+        mvprintw(0, 0, "Player %d's turn (%c) (turn %d):", g->cur_player,
                  marks[g->cur_player], g->turn);
         refresh();
-
-        print_board(board_win, g->board);
+        print_board(g->board);
 
         pos = (*g->player_move_funcptr[g->cur_player - 1])(g->board,
                                                            g->cur_player);
         g->board[pos] = marks[g->cur_player];
+        if (g->players[g->cur_player - 1] == PLAYER_COMPUTER) {
+#ifdef _WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
+        }
         g->cur_player = g->cur_player == 1 ? 2 : 1;
         g->turn++;
 
         /* Check for victory */
-        /* Can only win after the 6th turn, hence the check */
-        if (g->turn >= 6) { status = check_for_win(g->board, g->turn); }
+        /* Can only win after the 5th turn, hence the check */
+        if (g->turn > 5) { status = check_for_win(g->board, g->turn); }
     } /* while */
 
-    print_board(board_win, g->board);
+    print_board(g->board);
 
     return status;
 }
 
 /* Prints the current state of the board */
 void 
-print_board(WINDOW *win, const char *board)
+print_board(const char *board)
 {
-    mvwprintw(win, 0, 0, "     |   |   ");
-    mvwprintw(win, 1, 0, "A  %c | %c | %c ", board[0], board[1], board[2]);
-    mvwprintw(win, 2, 0, "  ___|___|___");
-    mvwprintw(win, 3, 0, "     |   |   ");
-    mvwprintw(win, 4, 0, "B  %c | %c | %c ", board[3], board[4], board[5]);
-    mvwprintw(win, 5, 0, "  ___|___|___");
-    mvwprintw(win, 6, 0, "     |   |   ");
-    mvwprintw(win, 7, 0, "C  %c | %c | %c ", board[6], board[7], board[8]);
-    mvwprintw(win, 8, 0, "     |   |   ");
-    mvwprintw(win, 10, 0, "   1 | 2 | 3 ");
-    wrefresh(win);
+    mvprintw( 2, 0, "     |   |   ");
+    mvprintw( 3, 0, "A  %c | %c | %c ", board[0], board[1], board[2]);
+    mvprintw( 4, 0, "  ___|___|___");
+    mvprintw( 5, 0, "     |   |   ");
+    mvprintw( 6, 0, "B  %c | %c | %c ", board[3], board[4], board[5]);
+    mvprintw( 7, 0, "  ___|___|___");
+    mvprintw( 8, 0, "     |   |   ");
+    mvprintw( 9, 0, "C  %c | %c | %c ", board[6], board[7], board[8]);
+    mvprintw(10, 0, "     |   |   ");
+    mvprintw(12, 0, "   1 | 2 | 3 ");
+    refresh();
 }
 
 /* Checks the current state of the board for termination. */
@@ -597,28 +698,30 @@ check_for_win(const char *board, int turn)
     int i;
 
     for (i = 0; i < 9; i += 3) {
-        if (board[i] == board[i + 1]
-         && board[i + 1] == board[i + 2]) {
-            return board[i] == 'X' ? 1 : 2;
+        if (board[i] == board[i + 1] && board[i + 1] == board[i + 2]) {
+            if (board[i] == 'X') { return 1; }
+            else if (board[i] == 'O') { return 2; }
         } /* if */
     } /* for */
 
     /* Check the columns for a victor */
     for (i = 0; i < 3; i++) {
-        if (board[i] == board[i + 3]
-         && board[i + 3] == board[i + 6]) {
-            return board[i] == 'X' ? 1 : 2;
+        if (board[i] == board[i + 3] && board[i + 3] == board[i + 6]) {
+            if (board[i] == 'X') { return 1; }
+            else if (board[i] == 'O') { return 2; }
         } /* if */
     } /* for */
 
     /* Checks the backslash diagonal */
     if (board[0] == board[4] && board[4] == board[8]) {
-        return board[4] == 'X' ? 1 : 2;
+        if (board[4] == 'X') { return 1; }
+        else if (board[4] == 'O') { return 2; }
     } /* if */
 
     /* Checks the forwardslash diagonal */
     if (board[6] == board[4] && board[4] == board[2]) {
-        return board[4] == 'X' ? 1 : 2;
+        if (board[4] == 'X') { return 1; }
+        else if (board[4] == 'O') { return 2; }
     } /* if */
 
     /* Checks if the board is full with no winner */
