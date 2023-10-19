@@ -20,27 +20,19 @@ Multiplayer, CLI Tic-Tac-Toe game written in C
 Implemented Difficulty Levels:
 - [X] Easy
 - [X] Medium
-- [ ] Minimax
+- [X] Minimax
 - [ ] Trickymax
 - [ ] Cache
 - [ ] Fastcache
 - [ ] Alphabeta
 - [ ] Precache
 
-Minimax bot works pretty well if it is player 1. The only scenario I've found
-where it doesn't play ideally is "X--O-----". Next move is "XX-O-----", then
-"XXOO-----", then "XXOOX----", then any of the following three:
-1. "XXOOX-O--"
-2. "XXOOX--O-"
-3. "XXOOX---O"
-All of which result in player 2 losing. The problem is that it always chooses to
-move to B3 (row 2, column 3). Other than that, it always plays ideally, at best
-winning and at worst tying.
+## Note about the bots
+If both players are chosen to be bots, there is a one second delay between their
+moves so that the game is visible to the player. Otherwise, the game ends as
+soon as it starts, which is no fun.
 
-I've been trying to figure out how to make player 2 bot work just as well
-because it currently makes terrible moves regardless of who player 1 is. It
-seems to prefer to just move to whatever space it finds first, which is even
-worse than the easy bot somehow. It will occasionally lose to the easy bot.
+There is no delay if only one of the players is a bot.
 
 # Requirements
 * libncurses-dev for ncurses header(s)

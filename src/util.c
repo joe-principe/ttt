@@ -282,8 +282,9 @@ get_medium_bot_move(const char *board, int cur_player)
     int i, j, pos, sum = 0;
     char mark = marks[cur_player];
 
+    /* Checks the rows for a winning move */
     for (i = 0; i < 9; i += 3) {
-        for (j = i; j < 9 - (6 - i); j++) {
+        for (j = i; j < i + 3; j++) {
             if (board[j] == ' ') { pos = j; }
             if (board[j] == mark) { sum++; }
         } /* for */
@@ -291,6 +292,7 @@ get_medium_bot_move(const char *board, int cur_player)
         sum = 0;
     } /* for */
 
+    /* Checks the columns for a winning move */
     for (i = 0; i < 3; i++) {
         for (j = i; j < i + 7; j += 3) {
             if (board[j] == ' ') { pos = j; }
@@ -300,6 +302,7 @@ get_medium_bot_move(const char *board, int cur_player)
         sum = 0;
     } /* for */
 
+    /* Checks the forward slash diagonal for a winning move */
     for (i = 0; i < 9; i += 4) {
         if (board[i] == ' ') { pos = i; }
         if (board[i] == mark) { sum++; }
@@ -307,6 +310,7 @@ get_medium_bot_move(const char *board, int cur_player)
     if (sum == 2) { return pos; }
     sum = 0;
 
+    /* Checks the backslash diagonal for a winning move */
     for (i = 2; i < 7; i += 2) {
         if (board[i] == ' ') { pos = i; }
         if (board[i] == mark) { sum++; }
@@ -333,7 +337,7 @@ get_minimax_bot_move(const char *board, int cur_player)
     for (i = 0; i < num_empty; i++) {
         new_board[legal_moves[i]] = mark;
         opponent = cur_player == 1 ? 2 : 1;
-        score = minimax_score(new_board, opponent, cur_player, 0);
+        score = minimax_score(new_board, opponent, cur_player, 9 - num_empty);
         if (score > best_score) {
             best_pos = legal_moves[i];
             best_score = score;
@@ -355,7 +359,7 @@ minimax_score(const char *board, int player_to_move, int player_to_optimize,
     char new_board[9];
     
     depth++;
-    status = check_for_win(board, player_to_move);
+    status = check_for_win(board, depth + 1);
 
     if (status != -1) {
         if (status == 0) { return 0; }
