@@ -325,8 +325,8 @@ get_medium_bot_move(const char *board, int cur_player)
 int 
 get_minimax_bot_move(const char *board, int cur_player)
 {
-    int i, best_pos, score, best_score = -11, num_empty, opponent;
-    int legal_moves[9];
+    int i, index, score, num_empty, opponent, best_score = -11; 
+    int legal_moves[9], best_pos[9]; 
     char mark = marks[cur_player];
     char new_board[9];
 
@@ -339,12 +339,18 @@ get_minimax_bot_move(const char *board, int cur_player)
         opponent = cur_player == 1 ? 2 : 1;
         score = minimax_score(new_board, opponent, cur_player, 9 - num_empty);
         if (score > best_score) {
-            best_pos = legal_moves[i];
+            index = 0;
+            best_pos[index] = legal_moves[i];
             best_score = score;
+            index++;
         } /* if */
+        else if (score == best_score) {
+            best_pos[index] = legal_moves[i];
+            index++;
+        } /* else if */
         new_board[legal_moves[i]] = ' ';
     } /* for */
-    return best_pos;
+    return best_pos[rand() % index];
 }
 
 /* Gets the minimax score */
@@ -501,6 +507,7 @@ check_for_win(const char *board, int turn)
 {
     int i;
 
+    /* Check the rows for a victor */
     for (i = 0; i < 9; i += 3) {
         if (board[i] == board[i + 1] && board[i + 1] == board[i + 2]) {
             if (board[i] == 'X') { return 1; }
@@ -516,13 +523,13 @@ check_for_win(const char *board, int turn)
         } /* if */
     } /* for */
 
-    /* Checks the backslash diagonal */
+    /* Checks the back slash diagonal */
     if (board[0] == board[4] && board[4] == board[8]) {
         if (board[4] == 'X') { return 1; }
         else if (board[4] == 'O') { return 2; }
     } /* if */
 
-    /* Checks the forwardslash diagonal */
+    /* Checks the forward slash diagonal */
     if (board[6] == board[4] && board[4] == board[2]) {
         if (board[4] == 'X') { return 1; }
         else if (board[4] == 'O') { return 2; }
