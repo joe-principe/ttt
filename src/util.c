@@ -10,8 +10,12 @@
 #endif
 
 #include "util.h"
+#include "hashtable.h"
 
 const char marks[3] = { ' ', 'X', 'O' };
+
+ht_t *cache = NULL;
+ht_t *fast_cache = NULL;
 
 /* Initializes ncurses */
 void
@@ -41,7 +45,8 @@ init_game(game *g)
 void
 set_players(int *players)
 {
-    int i, player, key, highlight = 1, num_opts = 3, widest_str_len = 15;
+    int i, player, key;
+    int highlight = 1, num_opts = 3, widest_str_len = 15;
     bool should_continue = true;
     WINDOW *player_select_win;
     const char *player_options[] = {
@@ -125,7 +130,8 @@ set_player_moves(int *players, player_move_func *player_move_funcptr)
 int
 get_local_move(const char *board, int cur_player)
 {
-    int i, pos, key, pos_hi = 0;
+    int i, pos, key;
+    int pos_hi = 0;
     bool should_continue = true;
 
     while (should_continue) {
@@ -151,12 +157,12 @@ get_local_move(const char *board, int cur_player)
             case KEY_LEFT:
             case 'a':
                 pos_hi--;
-                if (pos_hi == -1) { pos_hi = 8; }
+                if (pos_hi == -1 || pos_hi == 2 || pos_hi == 5) { pos_hi += 3; }
                 break;
             case KEY_RIGHT:
             case 'd':
                 pos_hi++;
-                if (pos_hi == 9) { pos_hi = 0; }
+                if (pos_hi == 3 || pos_hi == 6 || pos_hi == 9) { pos_hi -= 3; }
                 break;
             case 10:
                 if (board[pos_hi] == ' ') {
@@ -190,7 +196,8 @@ establish_connection(void)
 player_move_func
 set_bot_difficulty(int player)
 {
-    int i, key, diff_hi = 0, num_opts = 8, widest_str_len = 38;
+    int i, key;
+    int diff_hi = 0, num_opts = 7, widest_str_len = 38;
     bool should_continue = true;
     player_move_func diff_mode;
     WINDOW *diff_win;
@@ -198,17 +205,15 @@ set_bot_difficulty(int player)
         "Easy - (Moves randomly)",
         "Med  - (Easy but makes winning moves)",
         "Hard - (Minimax)",
-        "Hard - (Tricky Minimax)",
         "Hard - (Minimax w/ cache)",
         "Hard - (Minimax w/ fast cache)",
         "Hard - (Minimax w/ alpha beta pruning)",
         "Hard - (Precache)"
     };
-    player_move_func bot_move_funcs[8] = {
+    player_move_func bot_move_funcs[7] = {
         get_easy_bot_move,
         get_medium_bot_move,
         get_minimax_bot_move,
-        get_tricky_bot_move,
         get_cache_bot_move,
         get_fastcache_bot_move,
         get_ab_pruning_bot_move,
@@ -264,14 +269,12 @@ set_bot_difficulty(int player)
 int 
 get_easy_bot_move(const char *board, int cur_player)
 {
-    int pos, num_empty = 0;
-    int empty_pos[9];
+    int num_empty = 0;
+    int legal_moves[9];
 
-    num_empty = get_legal_moves(board, empty_pos);
-
-    pos = empty_pos[rand() % num_empty];
-
-    return pos;
+    num_empty = get_legal_moves(board, legal_moves);
+    
+    return legal_moves[rand() % num_empty];
 }
 
 /* Gets a move from a medium bot (places pieces randomly unless winning move is
@@ -279,7 +282,8 @@ get_easy_bot_move(const char *board, int cur_player)
 int 
 get_medium_bot_move(const char *board, int cur_player)
 {
-    int i, j, pos, sum = 0;
+    int i, j, pos;
+    int sum = 0;
     char mark = marks[cur_player];
 
     /* Checks the rows for a winning move */
@@ -325,7 +329,9 @@ get_medium_bot_move(const char *board, int cur_player)
 int 
 get_minimax_bot_move(const char *board, int cur_player)
 {
-    int i, index, score, num_empty, opponent, best_score = -11; 
+    int i, index, score, num_empty;
+    int opponent = cur_player == 1 ? 2 : 1;
+    int best_score = -11; 
     int legal_moves[9], best_pos[9]; 
     char mark = marks[cur_player];
     char new_board[9];
@@ -336,7 +342,6 @@ get_minimax_bot_move(const char *board, int cur_player)
 
     for (i = 0; i < num_empty; i++) {
         new_board[legal_moves[i]] = mark;
-        opponent = cur_player == 1 ? 2 : 1;
         score = minimax_score(new_board, opponent, cur_player, 9 - num_empty);
         if (score > best_score) {
             index = 0;
@@ -350,6 +355,7 @@ get_minimax_bot_move(const char *board, int cur_player)
         } /* else if */
         new_board[legal_moves[i]] = ' ';
     } /* for */
+
     return best_pos[rand() % index];
 }
 
@@ -358,7 +364,8 @@ int
 minimax_score(const char *board, int player_to_move, int player_to_optimize,
               int depth)
 {
-    int i, num_empty, opponent, status, score;
+    int i, num_empty, status, score;
+    int opponent = player_to_move == 1 ? 2 : 1;
     int max_score = -10, min_score = 10;
     int legal_moves[9];
     char mark = marks[player_to_move];
@@ -378,7 +385,6 @@ minimax_score(const char *board, int player_to_move, int player_to_optimize,
 
     for (i = 0; i < num_empty; i++) {
         new_board[legal_moves[i]] = mark;
-        opponent = player_to_move == 1 ? 2 : 1;
         score = minimax_score(new_board, opponent, player_to_optimize, depth);
         if (score > max_score) { max_score = score; }
         if (score < min_score) { min_score = score; }
@@ -389,11 +395,12 @@ minimax_score(const char *board, int player_to_move, int player_to_optimize,
     return min_score;
 }
 
-/* Gets the current legal moves on the board */
+/* Gets the current legal moves and number of legal moves on the board */
 int
 get_legal_moves(const char *board, int *legal_moves)
 {
-    int i, j = 0;
+    int i;
+    int j = 0;
 
     for (i = 0; i < 9; i++) {
         if (board[i] == ' ') {
@@ -405,20 +412,100 @@ get_legal_moves(const char *board, int *legal_moves)
     return j;
 }
 
-/* Gets a move from a hard bot (uses modified minimax to sometimes trick
- * opponent if possible) */
-int 
-get_tricky_bot_move(const char *board, int cur_player)
-{
-    return 0;
-}
-
-/* Gets a move from a hard bot (uses minimax with caching)
- * @param board The tic-tac-toe board */
+/* Gets a move from a hard bot (uses minimax with caching) */
 int 
 get_cache_bot_move(const char *board, int cur_player)
 {
-    return 0;
+    int i, index, result, num_empty, opponent;
+    int best_result = -1; 
+    int legal_moves[9], best_pos[9]; 
+    char mark = marks[cur_player];
+    char new_board[9];
+    char result_str[2] = { 0 };
+
+    strncpy(new_board, board, 9);
+
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+        opponent = cur_player == 1 ? 2 : 1;
+        
+        if (ht_get(cache, board) == NULL) {
+            result = minimax_cache_score(new_board, opponent, cur_player,
+                                  9 - num_empty);
+            snprintf(result_str, 2, "%d", result);
+            ht_set(cache, board, result_str);
+        }
+        else { result = atoi(ht_get(cache, board)); }
+
+        if (result > best_result && (result == cur_player || result == 0)) {
+            index = 0;
+            best_pos[index] = legal_moves[i];
+            best_result = result;
+            index++;
+        }
+        else if (result == best_result) {
+            best_pos[index] = legal_moves[i];
+            index++;
+        }
+
+        new_board[legal_moves[i]] = ' ';
+    } /* for */
+
+    return best_pos[rand() % index];
+}
+
+int
+minimax_cache_score(const char *board, int player_to_move,
+                    int player_to_optimize, int depth)
+{
+    int i, num_empty, status, result, score, best_result, worst_result;
+    int opponent = player_to_move == 1 ? 2 : 1;
+    int max_score = -10, min_score = 10;
+    int legal_moves[9];
+    char mark = marks[player_to_move];
+    char new_board[9];
+    char result_str[2] = { 0 };
+    
+    depth++;
+    status = check_for_win(board, depth + 1);
+
+    if (status != -1) { return status; }
+
+    strncpy(new_board, board, 9);
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+
+        if (ht_get(cache, board) == NULL) {
+            result = minimax_cache_score(new_board, player_to_move,
+                                         player_to_optimize, 9 - num_empty);
+            snprintf(result_str, 2, "%d", result);
+            ht_set(cache, board, result_str);
+        }
+        else { result = atoi(ht_get(cache, board)); }
+
+        if (result == 0) { score = 0; }
+        else if (result == player_to_optimize) { score = 10; }
+        else if (result == opponent) { score = -10; } 
+
+        if (score > max_score) { max_score = score; }
+        if (score < min_score) { min_score = score; }
+        new_board[legal_moves[i]] = ' ';
+    } /* for */
+
+    if (max_score == 10) { best_result = player_to_optimize; }
+    else if (max_score == 0) { best_result = 0; }
+    else { best_result = opponent; }
+
+    if (min_score == -10) { worst_result = opponent; }
+    else if (min_score == 0) { worst_result = 0; }
+    else { worst_result = player_to_optimize; }
+
+    if (player_to_move == player_to_optimize) { return best_result; }
+    return worst_result;
 }
 
 /* Gets a move from a hard bot (uses minimax with better caching for when
@@ -448,7 +535,10 @@ get_precache_bot_move(const char *board, int cur_player)
 int 
 game_loop(game *g)
 {
-    int pos, status = -1;
+    int pos;
+    int status = -1;
+    cache = ht_create();
+    fast_cache = ht_create();
 
     while (status == -1) {
         mvprintw(0, 0, "Player %d's turn (%c) (turn %d):", g->cur_player,

@@ -11,17 +11,15 @@ Multiplayer, CLI Tic-Tac-Toe game written in C
 1. Easy (completely random moves)
 2. Medium (makes random moves like easy but will choose a winning move if it's available)
 3. Hard Minimax (uses the minimax algorithm to decide on its best move)
-4. Hard Trickymax (uses the minimax algorithm but will occasionally make unideal moves to try to trick the opponent)
-5. Hard Cache (uses the minimax algorithm with a cache for faster processing)
-6. Hard Fastcache (uses the minimax algorithm with a cache that rotates the table for faster caching)
-7. Hard Alphabeta (uses fastcache along with alphabeta pruning to go even faster)
-8. Hard Precache (uses a premade cache for lookup rather than runtime caching)
+4. Hard Cache (uses the minimax algorithm with a cache for faster processing)
+5. Hard Fastcache (uses the minimax algorithm with a cache that rotates the table for faster caching)
+6. Hard Alphabeta (uses fastcache along with alphabeta pruning to go even faster)
+7. Hard Precache (uses a premade cache for lookup rather than runtime caching)
 
 Implemented Difficulty Levels:
 - [X] Easy
 - [X] Medium
 - [X] Minimax
-- [ ] Trickymax
 - [ ] Cache
 - [ ] Fastcache
 - [ ] Alphabeta

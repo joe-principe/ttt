@@ -23,7 +23,6 @@ enum bot_difficulty {
     BOT_EASY,
     BOT_MEDIUM,
     BOT_MINIMAX,
-    BOT_TRICKY,
     BOT_CACHE,
     BOT_FASTCACHE,
     BOT_AB_PRUNING,
@@ -108,13 +107,24 @@ int get_medium_bot_move(const char *board, int cur_player);
  */
 int get_minimax_bot_move(const char *board, int cur_player);
 
-/* TODO: Enter the description of this function */
-int minimax_score(const char *board, int cur_player, int opponent, int depth);
+/**
+ * Gets the score of a potential move on the board
+ * @param board The tic-tac-toe board
+ * @param player_to_move The player whose turn it is
+ * @param player_to_optimize The player whose score we want to maximize
+ * @param depth The number of turns that have already been made
+ * @return For a terminal state, returns 0 for tie, +10 if the player to move is
+ * the player to optimize, -10 otherwise. If the board is not terminal, return
+ * the best score from the states below if the player to move is the player to
+ * optimize, otherwise return the worst score.
+ */
+int minimax_score(const char *board, int player_to_move, int player_to_optimize,
+                  int depth);
 
 /**
  * Gets all of the legal moves on the board.
- * @note The legal moves array contains the positions of legal moves followed by
- * -1 until the end. eg, only one legal move would be [pos, -1, ..., -1]
+ * @note The legal moves array contains the positions of legal moves. eg, only
+ * one legal move would be [pos, garbage, ..., -1]
  * @param board The tic-tac-toe board
  * @param legal_moves An array of the positions of legal moves. Passed in as an
  * out value. Illegal moves are -1, which the board is initialized to
@@ -123,21 +133,25 @@ int minimax_score(const char *board, int cur_player, int opponent, int depth);
 int get_legal_moves(const char *board, int *legal_moves);
 
 /**
- * Gets a move from a hard bot (uses modified minimax to sometimes trick
- * opponent if possible)
- * @param board The tic-tac-toe board
- * @param cur_player The player whose turn it is
- * @return The position of the bot's move
- */
-int get_tricky_bot_move(const char *board, int cur_player);
-
-/**
  * Gets a move from a hard bot (uses minimax with caching)
  * @param board The tic-tac-toe board
  * @param cur_player The player whose turn it is
  * @return The position of the bot's move
  */
 int get_cache_bot_move(const char *board, int cur_player);
+
+/**
+ * Gets the score of a potential move on the board, either from a hashtable if
+ * the board has been cached or recursive searching if it has not yet been
+ * cached
+ * @param board The tic-tac-toe board
+ * @param player_to_move The player whose turn it is
+ * @param player_to_optimize The player whose score we want to maximize
+ * @param depth The number of turns that have already been made
+ * @return The result of the board. 0 if tie, 1/2 if player 1/2 wins.
+ */
+int minimax_cache_score(const char *board, int player_to_move,
+                        int player_to_optimize, int depth);
 
 /**
  * Gets a move from a hard bot (uses minimax with better caching for when
