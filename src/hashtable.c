@@ -103,7 +103,7 @@ ht_dump(const ht_t *hash_table)
 
         if (entry == NULL) { continue; }
 
-        printf("slot[%4d]: ", i);
+        printf("slot[%06d]: ", i);
 
         while (1) {
             printf("%s = %s ", entry->key, entry->value);

@@ -154,6 +154,25 @@ int minimax_cache_score(const char *board, int player_to_move,
                         int player_to_optimize, int depth);
 
 /**
+ * Converts a game score into an end game result
+ * @param score The score to convert
+ * @param player The current player
+ * @param opponent The opponent player
+ * @return The result of the game. 0 if tie, 1/2 if player 1/2 wins
+ */
+int score_to_result(int score, int player, int opponent);
+
+/**
+ * Converts an end game result into a game score
+ * @param score The score to convert
+ * @param player The current player
+ * @param opponent The opponent player
+ * @return The score of the game. -10 if the opponent won, 0 if tie, +10 if the
+ * player to optimize won
+ */
+int result_to_score(int result, int player, int opponent);
+
+/**
  * Gets a move from a hard bot (uses minimax with better caching for when
  * multiple boards are the same state (ie, rotationally equivalent))
  * @param board The tic-tac-toe board
