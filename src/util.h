@@ -148,7 +148,8 @@ int get_cache_bot_move(const char *board, int cur_player);
  * @param player_to_move The player whose turn it is
  * @param player_to_optimize The player whose score we want to maximize
  * @param depth The number of turns that have already been made
- * @return The result of the board. 0 if tie, 1/2 if player 1/2 wins.
+ * @return The result of the board. 0 if tie, -10 if the opponent won, +10 if
+ * the player to optimize won
  */
 int minimax_cache_score(const char *board, int player_to_move,
                         int player_to_optimize, int depth);
@@ -180,6 +181,31 @@ int result_to_score(int result, int player, int opponent);
  * @return The position of the bot's move
  */
 int get_fastcache_bot_move(const char *board, int cur_player);
+
+/**
+ * Gets the score of a potential move on the board, either from a hash table if
+ * the board has been cached or recursive searching if it has not yet been
+ * hashed. Also caches rotations of the board since a board and all of its
+ * rotations share the same score
+ * @param board The tic-tac-toe board
+ * @param player_to_move The player whose turn it is
+ * @param player_to_optimize The player whose score we want to maximize
+ * @param depth The number of turns that have already been made
+ * @return The result of the board. 0 if tie, -10 if the opponent won, +10 if
+ * the player to optimize won
+ */
+int minimax_fastcache_score(const char *board, int player_to_move,
+                            int player_to_optimize, int depth);
+
+/**
+ * Rotates the board clockwise to get new orientations for caching.
+ * @param original_board The original, unaltered board
+ * @param r90deg_board The original board rotated 90 degrees clockwise
+ * @param r180deg_board The original board rotated 180 degrees clockwise
+ * @param r270deg_board The original board rotated 270 degrees clockwise
+ */
+void rotate_board(const char *original_board, char *r90deg_board,
+                  char *r180deg_board, char *r270deg_board);
 
 /**
  * Gets a move from a hard bot (uses fastcache with alpha beta pruning)

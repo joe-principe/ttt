@@ -439,11 +439,11 @@ get_cache_bot_move(const char *board, int cur_player)
             result = score_to_result(score, cur_player, opponent);
             snprintf(score_str, 4, "%d", result);
             ht_set(cache, new_board, score_str);
-        }
+        } /* if */
         else {
             result = atoi(ht_get(cache, new_board));
             score = result_to_score(result, cur_player, opponent);
-        }
+        } /* else */
 
         if (score > best_score) {
             index = 0;
@@ -459,10 +459,10 @@ get_cache_bot_move(const char *board, int cur_player)
         memset(score_str, 0, 4);
     } /* for */
 
-    /*return best_pos[rand() % index];*/
     return best_pos[rand() % index];
 }
 
+/* Gets the minimax score */
 int
 minimax_cache_score(const char *board, int player_to_move,
                     int player_to_optimize, int depth)
@@ -495,11 +495,11 @@ minimax_cache_score(const char *board, int player_to_move,
             result = score_to_result(score, player_to_move, opponent);
             snprintf(score_str, 4, "%d", result);
             ht_set(cache, new_board, score_str);
-        }
+        } /* if */
         else {
             result = atoi(ht_get(cache, new_board));
             score = result_to_score(result, player_to_move, opponent);
-        }
+        } /* else */
 
         if (score > max_score) { max_score = score; }
         if (score < min_score) { min_score = score; }
@@ -511,6 +511,7 @@ minimax_cache_score(const char *board, int player_to_move,
     return min_score;
 }
 
+/* Converts the score of a game into a game result */
 int
 score_to_result(int score, int player, int opponent)
 {
@@ -520,6 +521,7 @@ score_to_result(int score, int player, int opponent)
     return score;
 }
 
+/* Converts the result of a game into a score */
 int
 result_to_score(int result, int player, int opponent)
 {
@@ -534,7 +536,146 @@ result_to_score(int result, int player, int opponent)
 int 
 get_fastcache_bot_move(const char *board, int cur_player)
 {
-    return 0;
+    int i, index, score, num_empty, result;
+    int opponent = cur_player == 1 ? 2 : 1;
+    int best_score = -11; 
+    int legal_moves[9], best_pos[9]; 
+    char mark = marks[cur_player];
+    /* These names suck. I'll change them later */
+    char new_board[9], r90deg_board[9], r180deg_board[9], r270deg_board[9],
+         score_str[4] = { 0 };
+
+    strncpy(new_board, board, 9);
+
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+
+        /* If the current board has not been added to the cache, get the score
+         * the normal way. If it has been added, simply convert from string to
+         * int */
+        if (ht_get(fast_cache, new_board) == NULL) {
+            score = minimax_fastcache_score(new_board, opponent, cur_player,
+                                            9 - num_empty);
+            result = score_to_result(score, cur_player, opponent);
+            snprintf(score_str, 4, "%d", result);
+            rotate_board(new_board, r90deg_board, r180deg_board, r270deg_board);
+            ht_set(fast_cache, new_board, score_str);
+            ht_set(fast_cache, r90deg_board, score_str);
+            ht_set(fast_cache, r180deg_board, score_str);
+            ht_set(fast_cache, r270deg_board, score_str);
+        } /* if */
+        else {
+            result = atoi(ht_get(fast_cache, new_board));
+            score = result_to_score(result, cur_player, opponent);
+        } /* else */
+
+        if (score > best_score) {
+            index = 0;
+            best_pos[index] = legal_moves[i];
+            best_score = score;
+            index++;
+        } /* if */
+        else if (score == best_score) {
+            best_pos[index] = legal_moves[i];
+            index++;
+        } /* else if */
+        new_board[legal_moves[i]] = ' ';
+        memset(score_str, 0, 4);
+    } /* for */
+
+    return best_pos[rand() % index];
+}
+
+/* Gets the minimax score */ 
+int
+minimax_fastcache_score(const char *board, int player_to_move,
+                        int player_to_optimize, int depth)
+{
+    int i, num_empty, status, score, result;
+    int opponent = player_to_move == 1 ? 2 : 1;
+    int max_score = -10, min_score = 10;
+    int legal_moves[9];
+    char mark = marks[player_to_move];
+    char new_board[9], r90deg_board[9], r180deg_board[9], r270deg_board[9],
+         score_str[4] = { 0 };
+    
+    depth++;
+    status = check_for_win(board, depth + 1);
+
+    if (status != -1) {
+        if (status == 0) { return 0; }
+        else if (status == player_to_optimize) { return 10; }
+        else { return -10; }
+    } /* if */
+
+    strncpy(new_board, board, 9);
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+
+        if (ht_get(fast_cache, new_board) == NULL) {
+            score = minimax_fastcache_score(new_board, opponent, player_to_optimize,
+                                            depth);
+            result = score_to_result(score, player_to_move, opponent);
+            rotate_board(new_board, r90deg_board, r180deg_board, r270deg_board);
+            snprintf(score_str, 4, "%d", result);
+            ht_set(fast_cache, new_board, score_str);
+            ht_set(fast_cache, r90deg_board, score_str);
+            ht_set(fast_cache, r180deg_board, score_str);
+            ht_set(fast_cache, r270deg_board, score_str);
+        } /* if */
+        else {
+            result = atoi(ht_get(fast_cache, new_board));
+            score = result_to_score(result, player_to_move, opponent);
+        } /* else */
+
+        if (score > max_score) { max_score = score; }
+        if (score < min_score) { min_score = score; }
+        new_board[legal_moves[i]] = ' ';
+        memset(score_str, 0, 4);
+    } /* for */
+
+    if (player_to_move == player_to_optimize) { return max_score; }
+    return min_score;
+}
+
+/* Rotates the board into new orientations for caching */
+void
+rotate_board(const char *original_board, char *r90deg_board,
+             char *r180deg_board, char *r270deg_board)
+{
+    r90deg_board[0] = original_board[6];
+    r90deg_board[1] = original_board[3];
+    r90deg_board[2] = original_board[0];
+    r90deg_board[3] = original_board[7];
+    r90deg_board[4] = original_board[4];
+    r90deg_board[5] = original_board[1];
+    r90deg_board[6] = original_board[8];
+    r90deg_board[7] = original_board[5];
+    r90deg_board[8] = original_board[2];
+
+    r180deg_board[0] = original_board[8];
+    r180deg_board[1] = original_board[7];
+    r180deg_board[2] = original_board[6];
+    r180deg_board[3] = original_board[5];
+    r180deg_board[4] = original_board[4];
+    r180deg_board[5] = original_board[3];
+    r180deg_board[6] = original_board[2];
+    r180deg_board[7] = original_board[1];
+    r180deg_board[8] = original_board[0];
+
+    r270deg_board[0] = original_board[2];
+    r270deg_board[1] = original_board[5];
+    r270deg_board[2] = original_board[8];
+    r270deg_board[3] = original_board[1];
+    r270deg_board[4] = original_board[4];
+    r270deg_board[5] = original_board[7];
+    r270deg_board[6] = original_board[0];
+    r270deg_board[7] = original_board[3];
+    r270deg_board[8] = original_board[6];
 }
 
 /* Gets a move from a hard bot (uses fastcache with alpha beta pruning) */
