@@ -435,7 +435,7 @@ get_cache_bot_move(const char *board, int cur_player)
          * int */
         if (ht_get(cache, new_board) == NULL) {
             score = minimax_cache_score(new_board, opponent, cur_player,
-                                  9 - num_empty);
+                                        9 - num_empty);
             result = score_to_result(score, cur_player, opponent);
             snprintf(score_str, 4, "%d", result);
             ht_set(cache, new_board, score_str);
@@ -462,7 +462,7 @@ get_cache_bot_move(const char *board, int cur_player)
     return best_pos[rand() % index];
 }
 
-/* Gets the minimax score */
+/* Gets the minimax score (either through cache or recursively) */
 int
 minimax_cache_score(const char *board, int player_to_move,
                     int player_to_optimize, int depth)
@@ -692,7 +692,7 @@ get_ab_pruning_bot_move(const char *board, int cur_player)
 
     for (i = 0; i < num_empty; i++) {
         new_board[legal_moves[i]] = mark;
-        score = minimax_ab_score(new_board, num_empty, alpha, beta, true);
+        score = minimax_ab_score(new_board, 10 - num_empty, alpha, beta, true);
         if (score > best_score) {
             index = 0;
             best_pos[index] = legal_moves[i];
@@ -706,7 +706,7 @@ get_ab_pruning_bot_move(const char *board, int cur_player)
         new_board[legal_moves[i]] = ' ';
     } /* for */
 
-    return best_pos[rand() % index];
+    return best_pos[0];
 }
 
 int
@@ -719,9 +719,9 @@ minimax_ab_score(const char *board, int depth, int alpha, int beta,
     char mark = marks[depth % 2 + 1];
     char new_board[9];
 
-    status = check_for_win(board, 10 - depth);
+    status = check_for_win(board, depth + 1);
 
-    if (status != -1 || depth == 0) {
+    if (status != -1) {
         if (status == 0) { return 0; }
         else if (maximizing_player) { return 10; }
         else { return -10; }
@@ -733,22 +733,25 @@ minimax_ab_score(const char *board, int depth, int alpha, int beta,
     if (maximizing_player) {
         for (i = 0; i < num_empty; i++) {
             new_board[legal_moves[i]] = mark;
-            eval = minimax_ab_score(new_board, depth - 1, alpha, beta, false);
+            eval = minimax_ab_score(new_board, depth + 1, alpha, beta, false);
             max_eval = max_eval > eval ? max_eval : eval;
             alpha = alpha > eval ? alpha : eval;
             if (beta <= alpha) { break; }
-        }
+            new_board[legal_moves[i]] = ' ';
+        } /* for */
         return max_eval;
-    }
-
-    for (i = 0; i < num_empty; i++) {
-        new_board[legal_moves[i]] = mark;
-        eval = minimax_ab_score(new_board, depth - 1, alpha, beta, true);
-        min_eval = min_eval < eval ? min_eval : eval;
-        beta = beta < eval ? beta : eval;
-        if (beta <= alpha) { break; }
-    }
-    return min_eval;
+    } /* if */
+    else {
+        for (i = 0; i < num_empty; i++) {
+            new_board[legal_moves[i]] = mark;
+            eval = minimax_ab_score(new_board, depth + 1, alpha, beta, true);
+            min_eval = min_eval < eval ? min_eval : eval;
+            beta = beta < eval ? beta : eval;
+            if (beta <= alpha) { break; }
+            new_board[legal_moves[i]] = ' ';
+        } /* for */
+        return min_eval;
+    } /* else */
 }
 
 /* Gets a move from a hard bot (looks up moves from a cache file) */

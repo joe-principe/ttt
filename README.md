@@ -15,7 +15,7 @@ Multiplayer, CLI Tic-Tac-Toe game written in C
 3. Hard Minimax (uses the minimax algorithm to decide on its best move)
 4. Hard Cache (uses the minimax algorithm with a cache for faster processing)
 5. Hard Fastcache (uses the minimax algorithm with a cache that rotates the table for faster caching)
-6. Hard Alphabeta (uses fastcache along with alphabeta pruning to go even faster)
+6. Hard Alphabeta (uses alphabeta pruning during minimax to go even faster)
 7. Hard Precache (uses a premade cache for lookup rather than runtime caching)
 
 Implemented Difficulty Levels:
@@ -38,9 +38,8 @@ There is currently an issue if both bots are the same type of cache bot (both
 cache, both fastcache, both alphabeta). I think it has something to do with
 overwriting the results in the hashtable. Otherwise, they work just fine.
 
-The alpha-beta pruning bot mostly works as player 1, but does not work properly 
-as player 2. I think this is the same issue I'd had with the regular minimax
-where it's incorrectly evaluating ties.
+The alpha-beta bot kinda sorta works. Idk what's wrong with it right now and I
+don't really wanna keep debugging it to find out.
 
 # Requirements
 * libncurses-dev for ncurses header(s)
