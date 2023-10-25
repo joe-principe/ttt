@@ -1,6 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <stdbool.h>
+
 typedef struct game_t game;
 typedef int (*player_move_func)(const char *, int);
 
@@ -214,6 +216,21 @@ void rotate_board(const char *original_board, char *r90deg_board,
  * @return The position of the bot's move
  */
 int get_ab_pruning_bot_move(const char *board, int cur_player);
+
+/**
+ * Gets the score of a potential move on the board while using alpha beta
+ * pruning.
+ * @param board The tic-tac-toe board
+ * @param depth The depth at which we are searching
+ * @param alpha TODO I think this is the highest score reached so far
+ * @param beta TODO I think this is the lowest score reached so far
+ * @param maximizing_player Whether or not we are maximizing the score for the
+ * current depth (and therefore current player)
+ * @return The score of a position. 0 if tie, -10 if the opponent wins, +10 if
+ * the current player wins
+ */
+int minimax_ab_score(const char *board, int depth, int alpha, int beta,
+                     bool maximizing_player);
 
 /**
  * Gets a move from a hard bot (looks up moves from a cache file)

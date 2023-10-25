@@ -24,7 +24,7 @@ Implemented Difficulty Levels:
 - [X] Minimax
 - [X] Cache
 - [X] Fastcache
-- [ ] Alphabeta
+- [X] Alphabeta
 - [ ] Precache
 
 ## Note about the bots
@@ -37,6 +37,10 @@ There is no delay if only one of the players is a bot.
 There is currently an issue if both bots are the same type of cache bot (both
 cache, both fastcache, both alphabeta). I think it has something to do with
 overwriting the results in the hashtable. Otherwise, they work just fine.
+
+The alpha-beta pruning bot mostly works as player 1, but does not work properly 
+as player 2. I think this is the same issue I'd had with the regular minimax
+where it's incorrectly evaluating ties.
 
 # Requirements
 * libncurses-dev for ncurses header(s)

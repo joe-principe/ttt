@@ -541,7 +541,6 @@ get_fastcache_bot_move(const char *board, int cur_player)
     int best_score = -11; 
     int legal_moves[9], best_pos[9]; 
     char mark = marks[cur_player];
-    /* These names suck. I'll change them later */
     char new_board[9], r90deg_board[9], r180deg_board[9], r270deg_board[9],
          score_str[4] = { 0 };
 
@@ -678,11 +677,78 @@ rotate_board(const char *original_board, char *r90deg_board,
     r270deg_board[8] = original_board[6];
 }
 
-/* Gets a move from a hard bot (uses fastcache with alpha beta pruning) */
+/* Gets a move from a hard bot */
 int 
 get_ab_pruning_bot_move(const char *board, int cur_player)
 {
-    return 0;
+    int i, index, score, num_empty; 
+    int best_score = -11, alpha = -10, beta = 10;
+    int legal_moves[9], best_pos[9]; 
+    char mark = marks[cur_player];
+    char new_board[9];
+
+    strncpy(new_board, board, 9);
+    num_empty = get_legal_moves(board, legal_moves);
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+        score = minimax_ab_score(new_board, num_empty, alpha, beta, true);
+        if (score > best_score) {
+            index = 0;
+            best_pos[index] = legal_moves[i];
+            best_score = score;
+            index++;
+        } /* if */
+        else if (score == best_score) {
+            best_pos[index] = legal_moves[i];
+            index++;
+        } /* else if */
+        new_board[legal_moves[i]] = ' ';
+    } /* for */
+
+    return best_pos[rand() % index];
+}
+
+int
+minimax_ab_score(const char *board, int depth, int alpha, int beta,
+                 bool maximizing_player)
+{
+    int i, num_empty, status, eval;
+    int max_eval = -10, min_eval = 10;
+    int legal_moves[9];
+    char mark = marks[depth % 2 + 1];
+    char new_board[9];
+
+    status = check_for_win(board, 10 - depth);
+
+    if (status != -1 || depth == 0) {
+        if (status == 0) { return 0; }
+        else if (maximizing_player) { return 10; }
+        else { return -10; }
+    } /* if */
+
+    strncpy(new_board, board, 9);
+    num_empty = get_legal_moves(board, legal_moves);
+
+    if (maximizing_player) {
+        for (i = 0; i < num_empty; i++) {
+            new_board[legal_moves[i]] = mark;
+            eval = minimax_ab_score(new_board, depth - 1, alpha, beta, false);
+            max_eval = max_eval > eval ? max_eval : eval;
+            alpha = alpha > eval ? alpha : eval;
+            if (beta <= alpha) { break; }
+        }
+        return max_eval;
+    }
+
+    for (i = 0; i < num_empty; i++) {
+        new_board[legal_moves[i]] = mark;
+        eval = minimax_ab_score(new_board, depth - 1, alpha, beta, true);
+        min_eval = min_eval < eval ? min_eval : eval;
+        beta = beta < eval ? beta : eval;
+        if (beta <= alpha) { break; }
+    }
+    return min_eval;
 }
 
 /* Gets a move from a hard bot (looks up moves from a cache file) */
