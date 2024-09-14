@@ -1,13 +1,11 @@
-# multiplayer_tictactoe
-Multiplayer, CLI Tic-Tac-Toe game written in C
+# ttt
+TUI Tic-Tac-Toe game written in C
 
 # Features
-- [x] Local Player vs. Player Mode
-- [ ] Remote Player vs. Player Mode
-- [x] Local Player vs. Computer Mode
-- [x] Bot difficulty levels
-- [x] Command-line interface
-- [ ] Graphical user interface
+- Local Player vs. Player Mode
+- Local Player vs. Computer Mode
+- Bot difficulty levels
+- Command-line interface
 
 ## Difficulty Levels
 1. Easy (completely random moves)
@@ -16,16 +14,6 @@ Multiplayer, CLI Tic-Tac-Toe game written in C
 4. Hard Cache (uses the minimax algorithm with a cache for faster processing)
 5. Hard Fastcache (uses the minimax algorithm with a cache that rotates the table for faster caching)
 6. Hard Alphabeta (uses alphabeta pruning during minimax to go even faster)
-7. Hard Precache (uses a premade cache for lookup rather than runtime caching)
-
-Implemented Difficulty Levels:
-- [X] Easy
-- [X] Medium
-- [X] Minimax
-- [X] Cache
-- [X] Fastcache
-- [X] Alphabeta
-- [ ] Precache
 
 ## Note about the bots
 If both players are chosen to be bots, there is a one second delay between their
